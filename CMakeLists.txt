@@ -4,6 +4,7 @@ set(CMAKE_CXX_STANDARD 14)
 
 enable_testing()
 
+add_library( colormap INTERFACE)
 include_directories(include)
 
 add_subdirectory(test)

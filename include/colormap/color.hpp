@@ -22,105 +22,114 @@
 #include <iostream>
 #include <limits>
 
-namespace colormap {
+namespace colormap
+{
 
-    enum class space {
-        grayscale,
-        rgb,
-        rgba
-    };
+  enum class space
+  {
+    grayscale,
+    rgb,
+    rgba
+  };
 
-    template <space, typename = std::uint8_t>
-    struct color;
+  template <space, typename = std::uint8_t>
+  struct color;
 
-    template <typename T>
-    struct color<space::grayscale, T> {
-        static T depth () { return std::numeric_limits<T>::max(); }
-        static space color_space () { return space::grayscale; }
+  template <typename T>
+  struct color<space::grayscale, T>
+  {
+    static T     depth() { return std::numeric_limits<T>::max(); }
+    static space color_space() { return space::grayscale; }
 
-        color (T v = 0) : val(v) {}
+    color(T v = 0) : val(v) {}
 
-        template <typename Float,
-                  typename = typename std::enable_if<std::is_floating_point<Float>::value>::type>
-        color (Float v) : val(v * depth()) {}
+    template <typename Float, typename = typename std::enable_if<std::is_floating_point<Float>::value>::type>
+    color(Float v) : val(v * depth())
+    {
+    }
 
-        color mix (color const& other, double mix) const {
-            return { T(other.val * mix + val * (1. - mix)) };
-        }
+    color mix(color const& other, double mix) const { return {T(other.val * mix + val * (1. - mix))}; }
 
-        std::ostream & write (std::ostream & os) const {
-            return os.write(reinterpret_cast<char const *>(&val), sizeof(T));
-        }
+    std::ostream& write(std::ostream& os) const { return os.write(reinterpret_cast<char const*>(&val), sizeof(T)); }
 
-        friend std::ostream & operator<< (std::ostream & os, color const& c) {
-            os << long(c.val) << ' ';
-            return os;
-        }
-    private:
-        T val;
-    };
+    friend std::ostream& operator<<(std::ostream& os, color const& c)
+    {
+      os << long(c.val) << ' ';
+      return os;
+    }
+    const T& get_val() const { return val; }
 
-    template <typename T, size_t N>
-    struct basic_color {
-        static T depth () { return std::numeric_limits<T>::max(); }
-        static space color_space () { return space::rgb; }
+  private:
+    T val;
+  };
 
-        basic_color () : channels {{}} {}
+  template <typename T, size_t N>
+  struct basic_color
+  {
+    static T     depth() { return std::numeric_limits<T>::max(); }
+    static space color_space() { return space::rgb; }
 
-        basic_color (std::array<color<space::grayscale,T>, N> const& chns)
-            : channels(chns) {}
+    basic_color() : channels{{}} {}
 
-        template <typename Color,
-                  typename = typename std::enable_if<std::is_base_of<basic_color, Color>::value>::type>
-        Color mix (Color const& other, double mix) const {
-            Color mixed;
-            for (size_t i = 0; i < channels.size(); ++i)
-                mixed.channels[i] = channels[i].mix(other.channels[i], mix);
-            return mixed;
-        }
+    basic_color(std::array<color<space::grayscale, T>, N> const& chns) : channels(chns) {}
 
-        std::ostream & write (std::ostream & os) const {
-            for (auto const& ch : channels)
-                ch.write(os);
-            return os;
-        }
+    template <typename Color, typename = typename std::enable_if<std::is_base_of<basic_color, Color>::value>::type>
+    Color mix(Color const& other, double mix) const
+    {
+      Color mixed;
+      for (size_t i = 0; i < channels.size(); ++i)
+        mixed.channels[i] = channels[i].mix(other.channels[i], mix);
+      return mixed;
+    }
 
-        friend std::ostream & operator<< (std::ostream & os, basic_color const& c) {
-            for (auto const& ch : c.channels)
-                os << ch;
-            return os;
-        }
-    protected:
-        std::array<color<space::grayscale,T>,N> channels;
-    };
+    std::ostream& write(std::ostream& os) const
+    {
+      for (auto const& ch : channels)
+        ch.write(os);
+      return os;
+    }
 
-    template <typename T>
-    struct color<space::rgb, T> : public basic_color<T, 3> {
-        using Base = basic_color<T, 3>;
+    friend std::ostream& operator<<(std::ostream& os, basic_color const& c)
+    {
+      for (auto const& ch : c.channels)
+        os << ch;
+      return os;
+    }
+    const std::array<color<space::grayscale, T>, N>& get_channels() { return channels; }
 
-        using Base::Base;
-        color (T r, T g, T b) : Base {{{ {r}, {g}, {b} }}} {}
+  protected:
+    std::array<color<space::grayscale, T>, N> channels;
+  };
 
-        template <typename Float,
-                  typename = typename std::enable_if<std::is_floating_point<Float>::value>::type>
-        color (Float r, Float g, Float b) : Base {{{ {r}, {g}, {b} }}} {}
+  template <typename T>
+  struct color<space::rgb, T> : public basic_color<T, 3>
+  {
+    using Base = basic_color<T, 3>;
 
-        friend color<space::rgba, T>;
-    };
+    using Base::Base;
+    color(T r, T g, T b) : Base{{{{r}, {g}, {b}}}} {}
 
-    template <typename T>
-    struct color<space::rgba, T> : public basic_color<T, 4> {
-        using Base = basic_color<T, 4>;
+    template <typename Float, typename = typename std::enable_if<std::is_floating_point<Float>::value>::type>
+    color(Float r, Float g, Float b) : Base{{{{r}, {g}, {b}}}}
+    {
+    }
 
-        using Base::Base;
-        color (T r, T g, T b, T a) : Base {{{ {r}, {g}, {b}, {a} }}} {}
-        color (color<space::rgb, T> const& rgb, T a = std::numeric_limits<T>::max())
-            : Base {{{ rgb.channels[0], rgb.channels[1], rgb.channels[2], {a} }}} {}
+    friend color<space::rgba, T>;
+  };
 
-        template <typename Float,
-                  typename = typename std::enable_if<std::is_floating_point<Float>::value>::type>
-        color (Float r, Float g, Float b, Float a) : Base {{{ {r}, {g}, {b}, {a} }}} {}
+  template <typename T>
+  struct color<space::rgba, T> : public basic_color<T, 4>
+  {
+    using Base = basic_color<T, 4>;
 
-    };
+    using Base::Base;
+    color(T r, T g, T b, T a) : Base{{{{r}, {g}, {b}, {a}}}} {}
+    color(color<space::rgb, T> const& rgb, T a = std::numeric_limits<T>::max()) : Base{{{rgb.channels[0], rgb.channels[1], rgb.channels[2], {a}}}} {}
 
-}
+    template <typename Float, typename = typename std::enable_if<std::is_floating_point<Float>::value>::type>
+    color(Float r, Float g, Float b, Float a) : Base{{{{r}, {g}, {b}, {a}}}}
+    {
+    }
+  };
+
+} // namespace colormap
