@@ -108,6 +108,7 @@ namespace colormap
 
     using Base::Base;
     color(T r, T g, T b) : Base{{{{r}, {g}, {b}}}} {}
+    color() : Base{{{{0}, {0}, {0}}}} {}
 
     template <typename Float, typename = typename std::enable_if<std::is_floating_point<Float>::value>::type>
     color(Float r, Float g, Float b) : Base{{{{r}, {g}, {b}}}}
